@@ -475,16 +475,16 @@ def get_vet_advice(openrouter_api_key: str, question: str, dog_profile: dict) ->
 with st.sidebar:
     st.header("⚙️ Settings")
 
-    # Initialize once in session_state
+    # store API key in session_state
     if "openrouter_api_key" not in st.session_state:
-        st.session_state.openrouter_api_key = os.getenv("OPENROUTER_API_KEY", "")
+        st.session_state.openrouter_api_key = st.secrets.get("OPENROUTER_API_KEY", "")
 
     st.session_state.openrouter_api_key = st.text_input(
-        "OpenRouter API Key (for DeepSeek via OpenRouter)",
-        type="password",
+        "OpenRouter API Key",
         value=st.session_state.openrouter_api_key,
-        help="Get your key at https://openrouter.ai/settings/keys",
+        type="password",
     )
+
     #dog profile sidebar
     st.divider()
     st.subheader("🐕 Dog Profile")
