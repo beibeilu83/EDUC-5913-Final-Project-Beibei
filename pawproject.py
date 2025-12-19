@@ -414,56 +414,62 @@ def calculate_mer(weight, factor):
     rer = 70 * (weight ** 0.75)
     return int(rer * factor)
 
-def get_vet_advice(api_key: str, question: str, dog_profile: dict) -> str:
-    if not api_key:
-        return "API key missing. Please add your OpenRouter API key in the sidebar."
+def get_vet_advice(openrouter_api_key: str, question: str, dog_profile: dict) -> str:
+    """
+    Call DeepSeek via OpenRouter using HTTP requests.
+    """
+
+    if not openrouter_api_key:
+        return "API key missing. Please add your OpenRouter API key."
+
+    import requests
+
+    # Build dog profile context
+    name = dog_profile.get("name", "the dog")
+    weight = dog_profile.get("weight", None)
+    age = dog_profile.get("age", None)
+    activity = dog_profile.get("activity_level", None)
+
+    profile_bits = [f"Name: {name}"]
+    if weight:
+        profile_bits.append(f"Weight: {weight} kg")
+    if age:
+        profile_bits.append(f"Age: {age}")
+    if activity:
+        profile_bits.append(f"Activity level: {activity}")
+    profile_str = "; ".join(profile_bits)
+
+    system_prompt = (
+        "You are a cautious canine nutrition assistant.\n"
+        "You answer questions about safe/unsafe foods, calories, and general dog nutrition.\n"
+        "You do NOT provide medical diagnoses. For emergencies or serious symptoms, "
+        "always tell the user to contact a veterinarian immediately.\n"
+        f"Dog profile: {profile_str}\n"
+    )
+
+    url = "https://openrouter.ai/api/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {openrouter_api_key}",
+        "Content-Type": "application/json",
+    }
+    body = {
+        "model": "deepseek/deepseek-r1-0528:free",
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": question},
+        ]
+    }
 
     try:
-        client = OpenAI(
-            base_url="https://openrouter.ai/api/v1",
-            api_key=api_key,
-        )
+        response = requests.post(url, headers=headers, json=body, timeout=30)
+        response.raise_for_status()
 
-        name = dog_profile.get("name", "the dog")
-        weight = dog_profile.get("weight", None)
-        age = dog_profile.get("age", None)
-        activity = dog_profile.get("activity_level", None)
-
-        profile_bits = [f"Name: {name}"]
-        if weight is not None:
-            profile_bits.append(f"Weight: {weight} kg")
-        if age is not None:
-            profile_bits.append(f"Age: {age}")
-        if activity is not None:
-            profile_bits.append(f"Activity level: {activity}")
-        profile_str = "; ".join(profile_bits)
-
-        system_prompt = (
-            "You are a cautious canine nutrition assistant.\n"
-            "You answer questions about safe/unsafe foods, calories, and general dog nutrition.\n"
-            "You do NOT provide medical diagnoses. For emergencies or serious symptoms, "
-            "always tell the user to contact a veterinarian immediately.\n"
-            f"Dog profile: {profile_str}\n"
-        )
-
-        completion = client.chat.completions.create(
-            model="deepseek/deepseek-r1-0528:free",
-            extra_headers={
-                "HTTP-Referer": "http://localhost:8501",  # or your deployed URL
-                "X-Title": "PawPal Dog Nutrition Tracker",
-            },
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": question},
-            ],
-            temperature=0.3,
-        )
-
-        reply = completion.choices[0].message.content
-        return reply.strip() if reply else "Sorry, I couldn't generate a response."
+        data = response.json()
+        return data["choices"][0]["message"]["content"].strip()
 
     except Exception as e:
-        return f"Error talking to DeepSeek via OpenRouter: {e}"
+        return f"Error contacting DeepSeek: {e}"
+
 
 
 # --- SIDEBAR SETTINGS ---
