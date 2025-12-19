@@ -5,6 +5,9 @@ import plotly.graph_objects as go
 import re, difflib, datetime
 import os
 
+OPENROUTER_API_KEY = st.secrets.get("OPENROUTER_API_KEY", "")
+
+
 
 # --- CONFIGURATION ---
 st.set_page_config(
@@ -413,21 +416,27 @@ def calculate_mer(weight, factor):
     rer = 70 * (weight ** 0.75)
     return int(rer * factor)
 
-def get_vet_advice(openrouter_api_key: str, question: str, dog_profile: dict) -> str:
+
+def get_vet_advice(question: str, dog_profile: dict) -> str:
     """
     Call DeepSeek via OpenRouter using HTTP requests.
+    API key is read from Streamlit secrets / session_state.
     """
 
-    if not openrouter_api_key:
-        return "API key missing. Please add your OpenRouter API key."
+    # Get API key from session_state or secrets
+    api_key = st.session_state.get("openrouter_api_key") or st.secrets.get("OPENROUTER_API_KEY", "")
 
-    import requests
+    if not api_key:
+        return (
+            "AI is not configured on the server (missing OPENROUTER_API_KEY).\n\n"
+            "If you are the app owner, add it in Streamlit Secrets."
+        )
 
     # Build dog profile context
     name = dog_profile.get("name", "the dog")
-    weight = dog_profile.get("weight", None)
-    age = dog_profile.get("age", None)
-    activity = dog_profile.get("activity_level", None)
+    weight = dog_profile.get("weight")
+    age = dog_profile.get("age")
+    activity = dog_profile.get("activity_level")
 
     profile_bits = [f"Name: {name}"]
     if weight:
@@ -448,7 +457,7 @@ def get_vet_advice(openrouter_api_key: str, question: str, dog_profile: dict) ->
 
     url = "https://openrouter.ai/api/v1/chat/completions"
     headers = {
-        "Authorization": f"Bearer {openrouter_api_key}",
+        "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
     }
     body = {
@@ -456,18 +465,18 @@ def get_vet_advice(openrouter_api_key: str, question: str, dog_profile: dict) ->
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": question},
-        ]
+        ],
+        "temperature": 0.3,
     }
 
     try:
         response = requests.post(url, headers=headers, json=body, timeout=30)
         response.raise_for_status()
-
         data = response.json()
         return data["choices"][0]["message"]["content"].strip()
-
     except Exception as e:
         return f"Error contacting DeepSeek: {e}"
+
 
 
 
@@ -475,15 +484,16 @@ def get_vet_advice(openrouter_api_key: str, question: str, dog_profile: dict) ->
 with st.sidebar:
     st.header("⚙️ Settings")
 
-    # store API key in session_state
-    if "openrouter_api_key" not in st.session_state:
-        st.session_state.openrouter_api_key = st.secrets.get("OPENROUTER_API_KEY", "")
+    # Load API key from Streamlit Secrets (app owner only)
+    OPENROUTER_API_KEY = st.secrets.get("OPENROUTER_API_KEY", "")
 
-    st.session_state.openrouter_api_key = st.text_input(
-        "OpenRouter API Key",
-        value=st.session_state.openrouter_api_key,
-        type="password",
-    )
+    # Store in session_state so the AI tab can use it
+    st.session_state.openrouter_api_key = OPENROUTER_API_KEY
+
+    if not OPENROUTER_API_KEY:
+        st.error("Server is missing API key. Please configure OPENROUTER_API_KEY in Streamlit Secrets.")
+    else:
+        st.success("AI Assistant is ready to use.")
 
     #dog profile sidebar
     st.divider()
@@ -775,9 +785,9 @@ with tab2:
 # --- TAB 3: ASK THE VET / AI ASSISTANT ---
 with tab3:
     st.header("🩺 Ask the AI Vet Assistant")
-    st.caption("This is not a real veterinarian. For emergencies or serious concerns, contact a vet immediately.")
+    st.caption("This is not a real veterinarian. For emergencies, contact a vet immediately.")
 
-    # Show previous chat messages
+    # show previous chat
     for msg in st.session_state.chat_history:
         with st.chat_message(msg["role"]):
             st.write(msg["content"])
@@ -785,22 +795,15 @@ with tab3:
     prompt = st.chat_input("Ask about dog nutrition, safe foods, calories, etc...")
 
     if prompt:
-        api_key = st.session_state.get("openrouter_api_key", "").strip()
+        # add user message
+        st.session_state.chat_history.append({"role": "user", "content": prompt})
+        with st.chat_message("user"):
+            st.write(prompt)
 
-        if not api_key:
-            st.error("Please add your OpenRouter API key in the sidebar before asking a question.")
-        else:
-            # Add and display user message
-            st.session_state.chat_history.append({"role": "user", "content": prompt})
-            with st.chat_message("user"):
-                st.write(prompt)
+        # get AI reply (key is read inside the function)
+        with st.chat_message("assistant"):
+            with st.spinner("Thinking..."):
+                response = get_vet_advice(prompt, st.session_state.dog_profile)
+                st.write(response)
 
-            # Get AI response
-            with st.chat_message("assistant"):
-                with st.spinner("Thinking..."):
-                    response = get_vet_advice(api_key, prompt, st.session_state.dog_profile)
-                    st.write(response)
-
-            # Save AI response
-            st.session_state.chat_history.append({"role": "assistant", "content": response})
-
+        st.session_state.chat_history.append({"role": "assistant", "content": response})
