@@ -19,8 +19,8 @@ PawPal Tracker is a Streamlit app to help dog owners log meals, estimate calorie
   4. json: Present for potential usage.
   5. plotly.graph_objects as go: For the dashboard gauge.
   6. re, difflib, datetime, os: Utilities for parsing, fuzzy matching, date/time, and environment variables.
-   
-		 *Configuration:*
+  
+   Configuration
   1. st.set_page_config(...) sets title, icon, and layout for the Streamlit app.
   2. Custom CSS via st.markdown(..., unsafe_allow_html=True) styles progress bars and warning/safe boxes.
 
@@ -52,15 +52,17 @@ These parse free-text entries to extract quantity, unit, and item name.
   1. Parse a free-text meal string (comma/plus-separated) and estimate calories.
 
      Inputs:
+     
         input_text example: "1 cup boiled chicken breast + 1 tbsp peanut butter, 120 g white rice".
         FOOD_DATABASE: local mapping.
      
       Outputs (dict):
-        items: parsed items with fields {name_input, qty_typed, unit_typed, name_matched, qty_db_units, unit_db, kcal_each}
-        total_kcal: total calories (float)
-        toxicity: toxicity warnings for matched toxic items
-        messages: conversion/uncertainty notes
-        unmatched: list of unrecognized fragments
+     
+        1. items: parsed items with fields {name_input, qty_typed, unit_typed, name_matched, qty_db_units, unit_db, kcal_each}
+        2. total_kcal: total calories (float)
+        3. toxicity: toxicity warnings for matched toxic items
+        4. messages: conversion/uncertainty notes
+        5. unmatched: list of unrecognized fragments
 
 *Algorithm summary:*
   1. Split on + or ,, parse fragments, match to DB, handle toxicity, convert units where possible, compute kcal.
