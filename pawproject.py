@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-from openai import OpenAI
 import json
 import plotly.graph_objects as go
 import re, difflib, datetime
