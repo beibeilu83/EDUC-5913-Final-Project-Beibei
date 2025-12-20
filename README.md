@@ -1,5 +1,5 @@
 # EDUC-5913-Final-Project-Beibei
-This file contain the code and streamlit link of the final artifact, which is a dog calories tracker app can be used repeatedly. 
+This file contain the code and streamlit link of the final artifact, which is a dog calories tracker app can be used repeatedly. Streamlit Link: https://educ-5913-final-project-beibei-mda5juocby4gsoc2muihid.streamlit.app/
 
 PawPal Tracker is a Streamlit app to help dog owners log meals, estimate calories from typed input, detect potentially toxic foods, and ask an AI assistant (via OpenRouter/DeepSeek) for guidance. The app stores logs in st.session_state and uses a local FOOD_DATABASE to estimate calories.
 
